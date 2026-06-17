@@ -32,9 +32,9 @@ log = logging.getLogger(__name__)
 
 INFO_URL = "https://api.hyperliquid.xyz/info"
 TIMEOUT = 15.0
-# Max concurrent clearinghouseState calls. 20 is conservative; tune up if
-# the endpoint proves tolerant, but do not remove the limit.
-CONCURRENCY = 20
+# Max concurrent clearinghouseState calls. 10 avoids 429s at 1000-wallet scale;
+# at 500 wallets 20 works but generates occasional bursts.
+CONCURRENCY = 10
 
 # HIP-3 dex name on Hyperliquid.
 XYZ_DEX = "xyz"
@@ -137,7 +137,8 @@ def _parse_positions(
     return records
 
 
-_RETRY_DELAY = 2.0  # seconds to wait before retrying a 429
+# Retry delays for successive 429s: 2s then 5s before giving up.
+_RETRY_DELAYS = [2.0, 5.0]
 
 
 async def _fetch_dex(
@@ -149,30 +150,33 @@ async def _fetch_dex(
 ) -> list[PositionRecord]:
     """Fetch clearinghouseState for one wallet on one dex.
 
-    Retries once after a short delay on 429. Any other failure is logged and
-    returns an empty list so one bad wallet doesn't abort the run.
+    Retries up to 2 times on 429 (2s then 5s backoff). Any other failure is
+    logged and returns an empty list so one bad wallet doesn't abort the run.
     """
     body: dict = {"type": "clearinghouseState", "user": wallet}
     if dex is not None:
         body["dex"] = dex
 
-    for attempt in range(2):
+    for attempt in range(len(_RETRY_DELAYS) + 1):
         async with sem:
             try:
                 resp = await client.post(INFO_URL, json=body, timeout=TIMEOUT)
-                if resp.status_code == 429 and attempt == 0:
-                    await asyncio.sleep(_RETRY_DELAY)
-                    continue
-                resp.raise_for_status()
-                data = resp.json()
-                fetched_at = datetime.now(timezone.utc)
-                return _parse_positions(wallet, data, watchlist, fetched_at)
+                is_429 = resp.status_code == 429
+                if not is_429:
+                    resp.raise_for_status()
+                    data = resp.json()
+                    fetched_at = datetime.now(timezone.utc)
+                    return _parse_positions(wallet, data, watchlist, fetched_at)
             except httpx.HTTPError as e:
-                if attempt == 0 and "429" in str(e):
-                    await asyncio.sleep(_RETRY_DELAY)
-                    continue
-                log.warning("clearinghouseState failed for %s dex=%s: %s", wallet, dex, e)
-                return []
+                is_429 = "429" in str(e)
+                if not is_429:
+                    log.warning("clearinghouseState failed for %s dex=%s: %s", wallet, dex, e)
+                    return []
+
+        if attempt < len(_RETRY_DELAYS):
+            await asyncio.sleep(_RETRY_DELAYS[attempt])
+        else:
+            log.warning("clearinghouseState gave up after retries for %s dex=%s", wallet, dex)
 
     return []
 

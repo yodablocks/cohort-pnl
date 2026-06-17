@@ -96,6 +96,31 @@ cohort-pnl --drill SPCX --tier "Semi-Rekt" --tail 10 --sort pnl
 | `--sort liq` | default | Sort by proximity to liquidation |
 | `--sort pnl` | | Sort by worst PNL% |
 
+```
+cohort-pnl --drill BTC --tier "Giga-Rekt" --concurrency 10
+15:44:59  INFO  fetching positions for 1000 wallets...
+                             BTC  |  Giga-Rekt  (16 positions, showing 16)
+
+  Wallet            Side          Size     Entry Px      Mark Px       PNL%       Margin     Liq Dist
+ ─────────────────────────────────────────────────────────────────────────────────────────────────────
+  0xda3cf9...f159   SHORT        0.985   $65,172.00   $65,272.00      -6.1%          $2K         1.1%
+  0x21ed86...6995   LONG        12.244   $64,533.20   $65,257.00     +44.4%         $20K         1.2%
+  0xbc7617...417c   LONG        50.824   $65,040.00   $65,248.00     +12.7%         $83K         1.4%
+  0xdfbdbc...685f   LONG        67.594   $64,977.80   $65,251.00     +16.7%        $110K         1.4%
+  0x5d9bd1...8323   LONG         0.382   $65,751.00   $65,257.00     -28.0%         $674         1.5%
+  0xfc57c0...7e77   SHORT        3.000   $65,503.00   $65,263.00     +12.9%          $6K         1.6%
+  0x9ca4d4...4fb9   SHORT        9.458   $65,620.30   $65,254.00     +22.5%         $15K         1.6%
+  0x12f147...807c   SHORT       67.000   $65,912.90   $65,254.00     +40.4%        $109K         1.6%
+  0x663c79...2a2f   LONG         0.025   $65,013.00   $65,263.00     +15.3%          $40         1.6%
+  0xf1b671...26b3   SHORT        4.000   $64,730.50   $65,264.00     -32.7%          $7K         1.7%
+  0x46560b...debd   LONG        12.455   $64,911.40   $65,254.00     +21.0%         $20K         1.7%
+  0xda12da...3973   LONG         9.101   $64,914.30   $65,266.00     +18.0%         $18K         1.8%
+  0x6d9532...ff14   LONG        16.028   $64,860.50   $65,254.00     +19.8%         $32K         1.8%
+  0xd759e8...daf3   LONG         3.959   $64,847.00   $65,269.00     +25.9%          $6K         1.9%
+  0xb7be3b...7763   LONG         0.943   $64,805.50   $65,257.00     +22.0%          $2K         1.9%
+  0xe81908...3d1c   LONG        17.520   $65,172.20   $65,248.00      +4.6%         $29K         2.0%
+```
+
 ## Architecture
 
 Two `clearinghouseState` calls are made per wallet:

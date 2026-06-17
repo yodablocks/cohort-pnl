@@ -100,8 +100,8 @@ def main() -> None:
     ap.add_argument("--save", action="store_true", help="write daily snapshot to SQLite")
     ap.add_argument("--top", type=int, default=1000,
                     help="number of leaderboard wallets to query (default 1000, 0 = all)")
-    ap.add_argument("--concurrency", type=int, default=20,
-                    help="max concurrent clearinghouseState calls (default 20)")
+    ap.add_argument("--concurrency", type=int, default=10,
+                    help="max concurrent clearinghouseState calls (default 10)")
     ap.add_argument("--drill", metavar="ASSET",
                     help="drill into individual positions for one asset (e.g. BTC)")
     ap.add_argument("--tier", default="Giga-Rekt",
