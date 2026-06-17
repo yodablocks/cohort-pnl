@@ -1,12 +1,14 @@
 """cli.py -- entry point.
 
 Usage:
-    cohort-pnl                  # print rich tables to terminal (top 1000 wallets)
-    cohort-pnl --top 500        # smaller wallet universe
-    cohort-pnl --top 0          # full leaderboard (slow, expect 429s)
-    cohort-pnl --json           # print JSON to stdout
-    cohort-pnl --save           # also write daily snapshot to SQLite
-    cohort-pnl --concurrency 40 # raise wallet fetch concurrency
+    cohort-pnl                                      # summary tables, top 1000 wallets
+    cohort-pnl --top 500                            # smaller wallet universe
+    cohort-pnl --top 0                              # full leaderboard (slow, expect 429s)
+    cohort-pnl --json                               # JSON output
+    cohort-pnl --save                               # write daily snapshot to SQLite
+    cohort-pnl --concurrency 40                     # raise wallet fetch concurrency
+    cohort-pnl --drill BTC --tier "Semi-Rekt"       # individual positions in one tier
+    cohort-pnl --drill SPCX --tier "Giga-Rekt" --tail 10 --sort pnl
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ from cohort_pnl.fetchers.leaderboard import fetch_leaderboard
 from cohort_pnl.fetchers.positions import fetch_positions
 from cohort_pnl.tiers import load_tier_rules
 from cohort_pnl.aggregate import aggregate_cohort
-from cohort_pnl.output import print_all, to_json
+from cohort_pnl.output import print_all, print_drill, to_json
 import cohort_pnl.snapshot as snapshot
 
 logging.basicConfig(
@@ -59,6 +61,17 @@ async def run(args: argparse.Namespace) -> None:
             client, wallets, watchlist, concurrency=args.concurrency
         )
 
+    if args.drill:
+        print_drill(
+            positions,
+            asset=args.drill,
+            tier=args.tier,
+            rules=rules,
+            tail=args.tail,
+            sort_by=args.sort,
+        )
+        return
+
     asset_summaries = {}
     for asset in watchlist:
         asset_summaries[asset] = aggregate_cohort(positions, asset, rules)
@@ -89,6 +102,14 @@ def main() -> None:
                     help="number of leaderboard wallets to query (default 1000, 0 = all)")
     ap.add_argument("--concurrency", type=int, default=20,
                     help="max concurrent clearinghouseState calls (default 20)")
+    ap.add_argument("--drill", metavar="ASSET",
+                    help="drill into individual positions for one asset (e.g. BTC)")
+    ap.add_argument("--tier", default="Giga-Rekt",
+                    help="tier to drill into (default: Giga-Rekt)")
+    ap.add_argument("--tail", type=int, default=20,
+                    help="max positions to show in drill mode (default 20)")
+    ap.add_argument("--sort", choices=["liq", "pnl"], default="liq",
+                    help="drill sort order: liq=closest to liquidation, pnl=worst PNL%% (default liq)")
     args = ap.parse_args()
     asyncio.run(run(args))
 

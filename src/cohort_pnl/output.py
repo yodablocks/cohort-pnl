@@ -98,6 +98,76 @@ def print_all(asset_summaries: dict[str, list[TierSummary]]) -> None:
         print_asset_table(asset, asset_summaries[asset])
 
 
+def print_drill(
+    positions: list,
+    asset: str,
+    tier: str,
+    rules: list,
+    *,
+    tail: int = 20,
+    sort_by: str = "liq",
+) -> None:
+    """Print individual wallet positions for one asset/tier combination.
+
+    sort_by: "liq" = closest to liquidation first, "pnl" = worst PNL% first.
+    """
+    from cohort_pnl.tiers import classify_tier, _pnl_pct, _liq_distance_pct
+
+    asset_upper = asset.upper()
+    bucket = [
+        p for p in positions
+        if p.coin == asset_upper and classify_tier(p, rules) == tier
+    ]
+
+    if not bucket:
+        console.print(f"[dim]No positions found for {asset} / {tier}[/dim]")
+        return
+
+    if sort_by == "liq":
+        # closest to liquidation first; positions with no liq_px go to end
+        bucket.sort(key=lambda p: _liq_distance_pct(p) or float("inf"))
+    else:
+        # worst PNL% first
+        bucket.sort(key=lambda p: _pnl_pct(p) or 0.0)
+
+    shown = bucket[:tail]
+    tier_style = _TIER_STYLE.get(tier, "white")
+
+    table = Table(
+        title=f"[bold]{asset}[/bold]  |  [{tier_style}]{tier}[/{tier_style}]  "
+              f"({len(bucket)} positions, showing {len(shown)})",
+        box=box.SIMPLE_HEAD,
+        show_lines=False,
+        expand=False,
+    )
+    table.add_column("Wallet", style="dim", min_width=12)
+    table.add_column("Side", justify="center", min_width=5)
+    table.add_column("Size", justify="right", min_width=10)
+    table.add_column("Entry Px", justify="right", min_width=10)
+    table.add_column("Mark Px", justify="right", min_width=10)
+    table.add_column("PNL%", justify="right", min_width=8)
+    table.add_column("Margin", justify="right", min_width=10)
+    table.add_column("Liq Dist", justify="right", min_width=10)
+
+    for p in shown:
+        pnl = _pnl_pct(p)
+        liq = _liq_distance_pct(p)
+        side_style = "green" if p.side == "long" else "red"
+        pnl_str = f"{pnl:+.1f}%" if pnl is not None else "N/A"
+        table.add_row(
+            p.wallet[:8] + "..." + p.wallet[-4:],
+            f"[{side_style}]{p.side.upper()}[/{side_style}]",
+            f"{p.size:.3f}",
+            f"${p.entry_px:,.2f}",
+            f"${p.mark_px:,.2f}",
+            pnl_str,
+            _fmt_value(p.margin_used),
+            _fmt_liq(liq),
+        )
+
+    console.print(table)
+
+
 def to_json(asset_summaries: dict[str, list[TierSummary]]) -> str:
     out: dict[str, Any] = {}
     for asset, summaries in asset_summaries.items():

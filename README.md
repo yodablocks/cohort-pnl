@@ -64,6 +64,12 @@ Requires Python 3.11+.
 # Rich tables to terminal (top 1000 wallets)
 cohort-pnl
 
+# Smaller wallet universe
+cohort-pnl --top 500
+
+# Full leaderboard (slow, expect rate limiting)
+cohort-pnl --top 0
+
 # JSON output
 cohort-pnl --json
 
@@ -72,7 +78,23 @@ cohort-pnl --save
 
 # Raise concurrency (default 20)
 cohort-pnl --concurrency 30
+
+# Drill into individual positions for one asset/tier
+cohort-pnl --drill BTC --tier "Giga-Rekt"
+cohort-pnl --drill SPCX --tier "Semi-Rekt" --tail 10 --sort pnl
 ```
+
+### Drill mode
+
+`--drill ASSET` fetches the full wallet universe and prints individual position rows for one asset+tier combination. Useful for inspecting which wallets are closest to liquidation or deepest underwater.
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--drill` | (off) | Asset to drill into (BTC, ETH, SPCX, etc.) |
+| `--tier` | Giga-Rekt | Tier to show |
+| `--tail` | 20 | Max rows to display |
+| `--sort liq` | default | Sort by proximity to liquidation |
+| `--sort pnl` | | Sort by worst PNL% |
 
 ## Architecture
 
