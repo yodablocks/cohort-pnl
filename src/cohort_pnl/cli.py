@@ -1,7 +1,9 @@
 """cli.py -- entry point.
 
 Usage:
-    cohort-pnl                  # print rich tables to terminal
+    cohort-pnl                  # print rich tables to terminal (top 1000 wallets)
+    cohort-pnl --top 500        # smaller wallet universe
+    cohort-pnl --top 0          # full leaderboard (slow, expect 429s)
     cohort-pnl --json           # print JSON to stdout
     cohort-pnl --save           # also write daily snapshot to SQLite
     cohort-pnl --concurrency 40 # raise wallet fetch concurrency
@@ -27,11 +29,12 @@ from cohort_pnl.output import print_all, to_json
 import cohort_pnl.snapshot as snapshot
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,
     format="%(asctime)s  %(levelname)s  %(message)s",
     datefmt="%H:%M:%S",
 )
 log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
 _CONFIG_DIR = Path(__file__).parent.parent.parent / "config"
 
@@ -48,6 +51,8 @@ async def run(args: argparse.Namespace) -> None:
     async with httpx.AsyncClient() as client:
         entries = await fetch_leaderboard(client)
         wallets = [e.eth_address for e in entries]
+        if args.top > 0:
+            wallets = wallets[:args.top]
         log.info("fetching positions for %d wallets...", len(wallets))
 
         positions = await fetch_positions(
@@ -80,6 +85,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="HyperTracker cohort PNL breakdown")
     ap.add_argument("--json", action="store_true", help="output JSON instead of rich tables")
     ap.add_argument("--save", action="store_true", help="write daily snapshot to SQLite")
+    ap.add_argument("--top", type=int, default=1000,
+                    help="number of leaderboard wallets to query (default 1000, 0 = all)")
     ap.add_argument("--concurrency", type=int, default=20,
                     help="max concurrent clearinghouseState calls (default 20)")
     args = ap.parse_args()
