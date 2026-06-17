@@ -1,0 +1,37 @@
+# Tier classification boundaries.
+#
+# Primary dimension: unrealized_pnl_pct = unrealized_pnl / margin_used * 100
+# Secondary dimension: liq_distance_pct = |mark_price - liq_price| / mark_price * 100
+#
+# Tiers are evaluated top-to-bottom. First match wins.
+# The liq_distance_pct override applies before pnl_pct for the worst tiers:
+# a position very close to liquidation lands in Giga-Rekt / Full Rekt even if
+# its PNL percentage does not look catastrophic (e.g. high leverage, tiny margin).
+
+tiers:
+  - name: Giga-Rekt
+    liq_distance_max_pct: 2.0   # within 2% of liquidation price
+
+  - name: Full Rekt
+    liq_distance_max_pct: 5.0   # within 5% of liquidation price
+
+  - name: Semi-Rekt
+    pnl_pct_max: -30.0          # PNL worse than -30%
+
+  - name: Exit Liquidity
+    pnl_pct_max: -10.0          # PNL between -10% and -30%
+
+  - name: Humble Earner
+    pnl_pct_max: 0.0            # PNL between -10% and 0% (negative but not bad)
+    pnl_pct_min: -10.0
+
+  - name: Grinder
+    pnl_pct_max: 10.0           # PNL between 0% and +10%
+    pnl_pct_min: 0.0
+
+  - name: Smart Money
+    pnl_pct_max: 50.0           # PNL between +10% and +50%
+    pnl_pct_min: 10.0
+
+  - name: Money Print
+    pnl_pct_min: 50.0           # PNL above +50%
