@@ -137,6 +137,9 @@ def _parse_positions(
     return records
 
 
+_RETRY_DELAY = 2.0  # seconds to wait before retrying a 429
+
+
 async def _fetch_dex(
     client: httpx.AsyncClient,
     wallet: str,
@@ -144,22 +147,34 @@ async def _fetch_dex(
     sem: asyncio.Semaphore,
     dex: str | None,
 ) -> list[PositionRecord]:
-    """Fetch clearinghouseState for one wallet on one dex."""
+    """Fetch clearinghouseState for one wallet on one dex.
+
+    Retries once after a short delay on 429. Any other failure is logged and
+    returns an empty list so one bad wallet doesn't abort the run.
+    """
     body: dict = {"type": "clearinghouseState", "user": wallet}
     if dex is not None:
         body["dex"] = dex
 
-    async with sem:
-        try:
-            resp = await client.post(INFO_URL, json=body, timeout=TIMEOUT)
-            resp.raise_for_status()
-            data = resp.json()
-        except httpx.HTTPError as e:
-            log.warning("clearinghouseState failed for %s dex=%s: %s", wallet, dex, e)
-            return []
+    for attempt in range(2):
+        async with sem:
+            try:
+                resp = await client.post(INFO_URL, json=body, timeout=TIMEOUT)
+                if resp.status_code == 429 and attempt == 0:
+                    await asyncio.sleep(_RETRY_DELAY)
+                    continue
+                resp.raise_for_status()
+                data = resp.json()
+                fetched_at = datetime.now(timezone.utc)
+                return _parse_positions(wallet, data, watchlist, fetched_at)
+            except httpx.HTTPError as e:
+                if attempt == 0 and "429" in str(e):
+                    await asyncio.sleep(_RETRY_DELAY)
+                    continue
+                log.warning("clearinghouseState failed for %s dex=%s: %s", wallet, dex, e)
+                return []
 
-    fetched_at = datetime.now(timezone.utc)
-    return _parse_positions(wallet, data, watchlist, fetched_at)
+    return []
 
 
 async def _fetch_one(
