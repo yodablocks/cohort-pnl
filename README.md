@@ -7,6 +7,15 @@ bucketed into named PNL tiers with per-cohort bias (directional lean),
 position count, total value, and proximity to liquidation. Covers 7
 watchlist assets across native HL perps and the xyz HIP-3 dex.
 
+## Output
+
+![BTC, ETH, SPCX cohort tables](notes/Screenshot02.png)
+![NVDA, TSLA, GOLD cohort tables](notes/Screenshot01.png)
+
+*Top 500 leaderboard wallets, `cohort-pnl --top 500`*
+
+---
+
 ## Watchlist
 
 `BTC, ETH, SPCX, NVDA, TSLA, GOLD, SILVER`
