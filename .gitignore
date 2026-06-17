@@ -18,6 +18,7 @@ data/
 
 # Claude / editor
 .claude/
+CLAUDE.md
 .cursor/
 *.code-workspace
 
